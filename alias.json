@@ -1,0 +1,25 @@
+{
+    "name": "SharpSCCM",
+    "version": "v0.0.0",
+    "command_name": "sharpsccm",
+    "original_author": "Mayyhem",
+    "repo_url": "https://github.com/sliverarmory/SharpSCCM",
+    "help": "A C# utility for interacting with SCCM",
+    "entrypoint": "Main",
+    "allow_args": true,
+    "default_args": "-h",
+    "is_reflective": false,
+    "is_assembly": true,
+    "files": [
+      {
+        "os": "windows",
+        "arch": "amd64",
+        "path": "SharpSCCM_merged.exe"
+      },
+      {
+        "os": "windows",
+        "arch": "386",
+        "path": "SharpSCCM_merged.exe"
+      }
+    ]
+  }
