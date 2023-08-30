@@ -43,7 +43,6 @@ jobs:
         $Version = git.exe describe --tags --abbrev=0
         $Version = "`"$Version`""
         Get-Content -Path alias.json | .\jq.exe ".version |= `"$Version`"" > ./compiled/alias.json
-        Copy-Item -Path LICENSE.txt -Destination compiled\LICENSE
         cd compiled
         tar.exe -czvf ..\SharpSCCM.tar.gz .
 
