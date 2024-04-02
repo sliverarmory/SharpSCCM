@@ -32,9 +32,9 @@ jobs:
     - name: MSBuild
       run: |
         nuget.exe restore .\SharpSCCM.sln
-        msbuild -p:Configuration=Release -p:Platform='Any CPU' /p:OutputPath=compiled_full/
+        msbuild -p:Configuration=Release -p:Platform='Any CPU' -t:rebuild /p:OutputPath=compiled_full/
         mkdir compiled
-        Copy-Item -Path .\compiled_full\SharpSCCM_merged.exe -Destination compiled\SharpSCCM_merged.exe
+        Copy-Item -Path .\compiled_full\SharpSCCM.exe -Destination compiled\SharpSCCM.exe
 
     - name: Build Package
       # Powershell is utter fucking trash.

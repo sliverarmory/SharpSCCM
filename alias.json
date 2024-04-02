@@ -14,12 +14,12 @@
       {
         "os": "windows",
         "arch": "amd64",
-        "path": "SharpSCCM_merged.exe"
+        "path": "SharpSCCM.exe"
       },
       {
         "os": "windows",
         "arch": "386",
-        "path": "SharpSCCM_merged.exe"
+        "path": "SharpSCCM.exe"
       }
     ]
   }
