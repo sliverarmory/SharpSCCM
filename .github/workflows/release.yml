@@ -1,0 +1,51 @@
+name: .NET Framework Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+      
+jobs:
+
+  build:
+
+    runs-on: windows-latest  
+                             
+    env:
+      Configuration: Release
+      Solution: SharpSCCM.sln
+
+    steps:
+
+    # Checkout repository
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    # Setup packages
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+    - run: nuget restore $env:Solution
+
+    # Build
+    - name: Setup MSBuild.exe
+      uses: microsoft/setup-msbuild@v2
+    - name: Build solution
+      run: msbuild $env:Solution -t:rebuild -property:Configuration=$env:Configuration
+
+    # Release
+    - name: Update release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: ${{ github.ref_name }}
+        tag_name: ${{ github.ref_name }}
+        prerelease: false
+        body: |
+          This is the release of  ${{ env.Solution }} compiled from source (${{ github.sha }}).
+          The repository updates releases automatically to keep them up-to-date with the latest tagged version.
+        fail_on_unmatched_files: true  
+        files: |
+          D:/a/SharpSCCM/SharpSCCM/bin/Release/SharpSCCM.exe
+          RELEASE_NOTES.md

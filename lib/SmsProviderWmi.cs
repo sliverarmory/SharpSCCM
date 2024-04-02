@@ -7,11 +7,15 @@ using System.Threading;
 
 namespace SharpSCCM
 {
-    public static class MgmtPointWmi
+    public static class SmsProviderWmi
     {
-        public static void Exec(ManagementScope wmiConnection, string collectionId = null, string collectionName = null, string deviceName = null, string applicationPath = null, string relayServer = null, string resourceId = null, bool runAsUser = true, string collectionType = null, string userName = null)
+        public static void Exec(ManagementScope wmiConnection, string collectionId = null, string collectionName = null, string deviceName = null, string applicationPath = null, string relayServer = null, string resourceId = null, bool runAsUser = true, string collectionType = null, string userName = null, int waitTime = 300)
         {
-            ManagementObject collection = GetCollection(wmiConnection, collectionName, collectionId);
+            ManagementObject collection = null;
+            if (!string.IsNullOrEmpty(collectionName) || !string.IsNullOrEmpty(collectionId))
+            {
+                collection = GetCollection(wmiConnection, collectionName, collectionId);
+            }
             // Create a collection is one is not specified
             if (collection == null)
             {
@@ -55,8 +59,8 @@ namespace SharpSCCM
             if (collectionType == "device")
             {
                 UpdateMachinePolicy(wmiConnection, (string)collection["CollectionID"]);
-                Console.WriteLine("[+] Waiting 1 minute for execution to complete...");
-                Thread.Sleep(60000);
+                Console.WriteLine($"[+] Waiting {waitTime} seconds for execution to complete...");
+                Thread.Sleep(waitTime * 1000);
             }
             else if (collectionType == "user")
             {
@@ -72,10 +76,6 @@ namespace SharpSCCM
             }
         }
 
-        public static void InvokeLastLogonUpdate(ManagementScope wmiConnection, string collectionName)
-        {
-            // TODO
-        }
         public static void GenerateCCR(string target, string server = null, string siteCode = null)
         {
             ManagementScope wmiConnection = MgmtUtil.NewWmiConnection(server, null, siteCode);
@@ -1026,18 +1026,26 @@ namespace SharpSCCM
                         try
                         {
                             collection.InvokeMethod("AddMembershipRule", addMembershipRuleParams, null);
-                            Console.WriteLine($"[+] Added {matchingResource["Name"]} {matchingResource["ResourceID"]} to {(!string.IsNullOrEmpty(collectionName) ? collectionName : collectionId)}");
+                            Console.WriteLine($"[+] Added {matchingResource["Name"]} ({matchingResource["ResourceID"]}) to {(!string.IsNullOrEmpty(collectionName) ? collectionName : collectionId)}");
                             Console.WriteLine($"[+] Waiting for new collection member to become available...");
                             bool memberAvailable = false;
                             while (!memberAvailable)
                             {
                                 Thread.Sleep(millisecondsTimeout: 5000);
                                 ManagementObjectCollection collectionMembers = GetCollectionMembers(wmiConnection, collectionName, collectionId);
-                                if (collectionMembers.Count == 1)
+                                if (collectionMembers.Count > 0)
                                 {
-                                    Console.WriteLine($"[+] Successfully added {matchingResource["Name"]} {matchingResource["ResourceID"]} to {(!string.IsNullOrEmpty(collectionName) ? collectionName : collectionId)}");
-                                    memberAvailable = true;
-                                    collectionMember = collectionMembers.Cast<ManagementObject>().First();
+                                    foreach (ManagementObject member in collectionMembers)
+                                    {
+                                        if ((!string.IsNullOrEmpty(deviceName) && (string)member.GetPropertyValue("Name") == deviceName) ||
+                                        (!string.IsNullOrEmpty(userName) && member.GetPropertyValue("Name").ToString().Contains(userName)) ||
+                                        (!string.IsNullOrEmpty(resourceId) && (uint)member.GetPropertyValue("ResourceID") == Convert.ToUInt32(resourceId)))
+                                        {
+                                            Console.WriteLine($"[+] Successfully added {matchingResource["Name"]} ({matchingResource["ResourceID"]}) to {(!string.IsNullOrEmpty(collectionName) ? collectionName : collectionId)}");
+                                            memberAvailable = true;
+                                            collectionMember = collectionMembers.Cast<ManagementObject>().First();
+                                        }
+                                    }
                                 }
                                 else
                                 {

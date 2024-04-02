@@ -1,5 +1,36 @@
 # SharpSCCM Release Notes
 
+### Version 2.0.8 (March 19, 2024)
+##### Changes
+- Fix from @subat0mik for machines that require FIPS-compliant algorithms (PR #53)
+
+### Version 2.0.7 (January 31, 2024)
+##### Changes
+- Fixed issue 36
+
+### Version 2.0.6 (January 31, 2024)
+##### Changes
+- Fixed issue 35
+
+### Version 2.0.5 (January 31, 2024)
+##### Changes
+- Fixed issue 40
+
+### Version 2.0.4 (January 29, 2024)
+##### Changes
+- Fixed issue 39
+
+### Version 2.0.3 (November 7, 2023)
+##### Changes
+- Fixed SCCM site system role name
+- Fixed default wait-time for exec
+
+### Version 2.0.2 (October 26, 2023)
+##### Changes
+- Replaced ILMerge with dnMerge for Release builds, merged size down to ~1MB
+- Updated variable, option, and class names and descriptions to reflect the correct SCCM site system roles
+- Added --wait-time option to allow the user to wait for exec propagation longer before cleanup in large environments
+
 ### Version 2.0.1 (May 24, 2023)
 ##### New Commands
 - invoke admin-service (CMPivot queries)

